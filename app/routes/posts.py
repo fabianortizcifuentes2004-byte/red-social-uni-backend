@@ -30,6 +30,13 @@ def listar_publicaciones():
     return jsonify([p.to_dict() for p in publicaciones]), 200
 
 
+@posts_bp.route("/<int:publicacion_id>", methods=["GET"])
+@jwt_required()
+def ver_publicacion(publicacion_id):
+    publicacion = Publicacion.query.get_or_404(publicacion_id)
+    return jsonify(publicacion.to_dict()), 200
+
+
 @posts_bp.route("", methods=["POST"])
 @jwt_required()
 @limiter.limit("15 per minute")

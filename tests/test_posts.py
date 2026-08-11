@@ -14,6 +14,15 @@ def test_crear_y_listar_publicacion(client):
     assert publicaciones[0]["contenido"] == "Hola mundo"
 
 
+def test_ver_publicacion_individual(client):
+    headers = registrar_y_loguear(client)
+    post = client.post("/api/posts", json={"contenido": "Hola"}, headers=headers).get_json()
+
+    resp = client.get(f"/api/posts/{post['id']}", headers=headers)
+    assert resp.status_code == 200
+    assert resp.get_json()["contenido"] == "Hola"
+
+
 def test_crear_publicacion_vacia_falla(client):
     headers = registrar_y_loguear(client)
     resp = client.post("/api/posts", json={"contenido": "  "}, headers=headers)
