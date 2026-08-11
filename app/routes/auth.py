@@ -1,13 +1,16 @@
 from datetime import timedelta
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token
-from app import db
+from app import db, limiter
 from app.models.usuario import Usuario, RolUsuario
 
 auth_bp = Blueprint("auth", __name__)
 
+NOMBRE_MAX = 150
+
 
 @auth_bp.route("/registro", methods=["POST"])
+@limiter.limit("10 per minute")
 def registro():
     data = request.get_json() or {}
 
@@ -20,6 +23,9 @@ def registro():
 
     if not nombre_completo or not correo or not password:
         return jsonify({"error": "nombre_completo, correo y password son obligatorios"}), 400
+
+    if len(nombre_completo) > NOMBRE_MAX:
+        return jsonify({"error": f"El nombre no puede superar los {NOMBRE_MAX} caracteres"}), 400
 
     dominio = current_app.config["DOMINIO_INSTITUCIONAL"]
     if not correo.endswith(f"@{dominio}"):
@@ -47,6 +53,7 @@ def registro():
 
 
 @auth_bp.route("/login", methods=["POST"])
+@limiter.limit("5 per minute")
 def login():
     data = request.get_json() or {}
     correo = data.get("correo", "").strip().lower()

@@ -6,6 +6,14 @@ from app.models.seguidor import Seguidor
 
 users_bp = Blueprint("users", __name__)
 
+LONGITUDES_MAXIMAS = {
+    "nombre_completo": 150,
+    "facultad": 100,
+    "carrera": 100,
+    "foto_url": 255,
+    "biografia": 280,
+}
+
 
 @users_bp.route("/me", methods=["GET"])
 @jwt_required()
@@ -22,7 +30,11 @@ def editar_perfil():
     usuario = Usuario.query.get_or_404(usuario_id)
     data = request.get_json() or {}
 
-    for campo in ("nombre_completo", "facultad", "carrera", "foto_url", "biografia"):
+    for campo, maximo in LONGITUDES_MAXIMAS.items():
+        if campo in data and data[campo] and len(data[campo]) > maximo:
+            return jsonify({"error": f"{campo} no puede superar los {maximo} caracteres"}), 400
+
+    for campo in LONGITUDES_MAXIMAS:
         if campo in data:
             setattr(usuario, campo, data[campo])
 

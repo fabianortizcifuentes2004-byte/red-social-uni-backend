@@ -1,15 +1,18 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_, and_
-from app import db
+from app import db, limiter
 from app.models.mensaje import Mensaje
 from app.models.usuario import Usuario
 
 messages_bp = Blueprint("messages", __name__)
 
+MENSAJE_MAX = 2000
+
 
 @messages_bp.route("", methods=["POST"])
 @jwt_required()
+@limiter.limit("30 per minute")
 def enviar_mensaje():
     remitente_id = int(get_jwt_identity())
     data = request.get_json() or {}
@@ -19,6 +22,8 @@ def enviar_mensaje():
 
     if not destinatario_id or not contenido:
         return jsonify({"error": "destinatario_id y contenido son obligatorios"}), 400
+    if len(contenido) > MENSAJE_MAX:
+        return jsonify({"error": f"El mensaje no puede superar los {MENSAJE_MAX} caracteres"}), 400
 
     mensaje = Mensaje(
         remitente_id=remitente_id, destinatario_id=destinatario_id, contenido=contenido

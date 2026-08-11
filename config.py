@@ -22,3 +22,7 @@ class Config:
         "UPLOAD_FOLDER", os.path.join(BASE_DIR, "instance", "uploads")
     )
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB por archivo
+
+    # Orígenes permitidos para CORS, separados por coma. "*" (default) permite
+    # cualquier origen — ajusta esto antes de desplegar a producción.
+    ORIGENES_PERMITIDOS = os.environ.get("ORIGENES_PERMITIDOS", "*")

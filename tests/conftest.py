@@ -15,6 +15,12 @@ class TestConfig:
     JWT_ACCESS_TOKEN_EXPIRES_HORAS = 12
     UPLOAD_FOLDER = None  # se asigna por test a una carpeta temporal
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024
+    ORIGENES_PERMITIDOS = "*"
+    # Desactivado por defecto: el limiter es un singleton a nivel de módulo y
+    # comparte almacenamiento entre apps de test dentro del mismo proceso, así
+    # que dejarlo activo rompería tests no relacionados que hacen login varias
+    # veces. Se reactiva puntualmente en test_rate_limiting.py.
+    RATELIMIT_ENABLED = False
 
 
 @pytest.fixture

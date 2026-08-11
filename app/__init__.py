@@ -3,10 +3,13 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 db = SQLAlchemy()
 migrate = Migrate()
 jwt = JWTManager()
+limiter = Limiter(key_func=get_remote_address, default_limits=["200 per hour"])
 
 
 def create_app(config_class="config.Config"):
@@ -16,7 +19,11 @@ def create_app(config_class="config.Config"):
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
-    CORS(app)  # habilita llamadas desde la app móvil
+    limiter.init_app(app)
+
+    origenes = app.config["ORIGENES_PERMITIDOS"]
+    origenes = "*" if origenes == "*" else [o.strip() for o in origenes.split(",")]
+    CORS(app, origins=origenes)  # habilita llamadas desde la app móvil
 
     # Registro de blueprints (rutas)
     from app.routes.auth import auth_bp

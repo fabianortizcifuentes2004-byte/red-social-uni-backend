@@ -1,12 +1,15 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-from app import db
+from app import db, limiter
 from app.models.publicacion import Publicacion
 from app.models.comentario import Comentario
 from app.models.like import Like
 from app.models.usuario import RolUsuario
 
 posts_bp = Blueprint("posts", __name__)
+
+PUBLICACION_MAX = 5000
+COMENTARIO_MAX = 500
 
 
 @posts_bp.route("", methods=["GET"])
@@ -27,6 +30,7 @@ def listar_publicaciones():
 
 @posts_bp.route("", methods=["POST"])
 @jwt_required()
+@limiter.limit("15 per minute")
 def crear_publicacion():
     usuario_id = int(get_jwt_identity())
     claims = get_jwt()
@@ -35,6 +39,8 @@ def crear_publicacion():
     contenido = data.get("contenido", "").strip()
     if not contenido:
         return jsonify({"error": "El contenido no puede estar vacío"}), 400
+    if len(contenido) > PUBLICACION_MAX:
+        return jsonify({"error": f"El contenido no puede superar los {PUBLICACION_MAX} caracteres"}), 400
 
     fijado = bool(data.get("fijado", False))
     # Solo docentes/admin pueden fijar publicaciones
@@ -70,6 +76,7 @@ def eliminar_publicacion(publicacion_id):
 
 @posts_bp.route("/<int:publicacion_id>/comentarios", methods=["POST"])
 @jwt_required()
+@limiter.limit("15 per minute")
 def comentar(publicacion_id):
     usuario_id = int(get_jwt_identity())
     data = request.get_json() or {}
@@ -77,6 +84,8 @@ def comentar(publicacion_id):
 
     if not contenido:
         return jsonify({"error": "El comentario no puede estar vacío"}), 400
+    if len(contenido) > COMENTARIO_MAX:
+        return jsonify({"error": f"El comentario no puede superar los {COMENTARIO_MAX} caracteres"}), 400
 
     Publicacion.query.get_or_404(publicacion_id)
 
