@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: red-social-uni-backend
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "flask db upgrade && gunicorn run:app"
+    envVars:
+      - key: FLASK_APP
+        value: run.py
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: red-social-uni-db
+          property: connectionString
+      - key: DOMINIO_INSTITUCIONAL
+        value: usanjose.edu.co
+      - key: ORIGENES_PERMITIDOS
+        value: "*"
+      # Completar manualmente en el dashboard de Render tras el primer deploy
+      # (son secretos externos que Render no puede generar):
+      #   CLOUDINARY_URL        -> desde tu cuenta de Cloudinary
+      #   ADMIN_BOOTSTRAP_EMAIL -> tu correo, ya registrado en la app, para
+      #                            quedar como admin en el próximo deploy
+
+databases:
+  - name: red-social-uni-db
+    plan: free

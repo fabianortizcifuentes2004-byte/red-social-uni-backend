@@ -62,4 +62,30 @@ def create_app(config_class="config.Config"):
 
     registrar_comandos_cli(app)
 
+    # En hosts sin acceso a shell (p.ej. el plan gratuito de Render) no se
+    # puede correr `flask crear-admin`. Si ADMIN_BOOTSTRAP_EMAIL está seteada,
+    # ese usuario se promueve a admin automáticamente en la primera request
+    # que le llega a este proceso (no al arrancar, para no interferir con
+    # `flask db upgrade` corriendo antes de que la BD tenga las tablas).
+    correo_bootstrap = app.config.get("ADMIN_BOOTSTRAP_EMAIL")
+    if correo_bootstrap:
+        estado_bootstrap = {"hecho": False}
+
+        @app.before_request
+        def _bootstrap_admin():
+            if estado_bootstrap["hecho"]:
+                return
+            estado_bootstrap["hecho"] = True
+            try:
+                from app.models.usuario import Usuario, RolUsuario
+
+                usuario = Usuario.query.filter_by(
+                    correo=correo_bootstrap.strip().lower()
+                ).first()
+                if usuario and usuario.rol != RolUsuario.ADMIN:
+                    usuario.rol = RolUsuario.ADMIN
+                    db.session.commit()
+            except Exception:
+                db.session.rollback()
+
     return app

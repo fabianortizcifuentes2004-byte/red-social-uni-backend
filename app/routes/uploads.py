@@ -2,6 +2,8 @@ import os
 import uuid
 from flask import Blueprint, request, jsonify, current_app, send_from_directory
 from flask_jwt_extended import jwt_required
+import cloudinary
+import cloudinary.uploader
 
 uploads_bp = Blueprint("uploads", __name__)
 
@@ -24,6 +26,14 @@ def subir_imagen():
     extension = _extension(archivo.filename)
     if extension not in EXTENSIONES_PERMITIDAS:
         return jsonify({"error": "Formato no permitido (usa jpg, jpeg, png o webp)"}), 400
+
+    cloudinary_url = current_app.config.get("CLOUDINARY_URL")
+    if cloudinary_url:
+        # Hosts sin disco persistente (p.ej. el plan gratuito de Render) no
+        # pueden guardar archivos localmente entre despliegues/reinicios.
+        cloudinary.config(cloudinary_url=cloudinary_url)
+        resultado = cloudinary.uploader.upload(archivo, resource_type="image")
+        return jsonify({"url": resultado["secure_url"]}), 201
 
     carpeta = current_app.config["UPLOAD_FOLDER"]
     os.makedirs(carpeta, exist_ok=True)

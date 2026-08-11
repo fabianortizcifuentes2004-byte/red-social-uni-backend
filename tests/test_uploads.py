@@ -1,4 +1,5 @@
 import io
+from unittest.mock import patch
 
 from tests.conftest import registrar_y_loguear
 
@@ -58,3 +59,21 @@ def test_subir_sin_archivo_falla(client):
 
     resp = client.post("/api/uploads", data={}, content_type="multipart/form-data", headers=headers)
     assert resp.status_code == 400
+
+
+@patch("app.routes.uploads.cloudinary.uploader.upload")
+def test_subir_imagen_usa_cloudinary_si_esta_configurado(mock_upload, app, client):
+    mock_upload.return_value = {"secure_url": "https://res.cloudinary.com/demo/image/upload/foto.png"}
+    app.config["CLOUDINARY_URL"] = "cloudinary://fake_key:fake_secret@fake_cloud"
+
+    headers = registrar_y_loguear(client)
+    resp = client.post(
+        "/api/uploads",
+        data={"archivo": (_archivo_png(), "foto.png")},
+        content_type="multipart/form-data",
+        headers=headers,
+    )
+
+    assert resp.status_code == 201
+    assert resp.get_json()["url"] == "https://res.cloudinary.com/demo/image/upload/foto.png"
+    mock_upload.assert_called_once()
