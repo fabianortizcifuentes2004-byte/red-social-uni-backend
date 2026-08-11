@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_, and_
 from app import db
 from app.models.mensaje import Mensaje
+from app.models.usuario import Usuario
 
 messages_bp = Blueprint("messages", __name__)
 
@@ -26,6 +27,46 @@ def enviar_mensaje():
     db.session.commit()
 
     return jsonify(mensaje.to_dict()), 201
+
+
+@messages_bp.route("/conversaciones", methods=["GET"])
+@jwt_required()
+def listar_conversaciones():
+    usuario_id = int(get_jwt_identity())
+
+    mensajes = (
+        Mensaje.query.filter(
+            or_(Mensaje.remitente_id == usuario_id, Mensaje.destinatario_id == usuario_id)
+        )
+        .order_by(Mensaje.fecha_creacion.desc())
+        .all()
+    )
+
+    conversaciones = {}
+    for m in mensajes:
+        otro_id = m.destinatario_id if m.remitente_id == usuario_id else m.remitente_id
+        if otro_id not in conversaciones:
+            conversaciones[otro_id] = {
+                "usuario_id": otro_id,
+                "ultimo_mensaje": m.contenido,
+                "fecha_ultimo_mensaje": m.fecha_creacion.isoformat(),
+                "no_leidos": 0,
+            }
+        if m.destinatario_id == usuario_id and not m.leido:
+            conversaciones[otro_id]["no_leidos"] += 1
+
+    otros_ids = list(conversaciones.keys())
+    usuarios_por_id = {
+        u.id: u for u in Usuario.query.filter(Usuario.id.in_(otros_ids)).all()
+    } if otros_ids else {}
+
+    resultado = [
+        {**datos, "usuario": usuarios_por_id[otro_id].to_dict()}
+        for otro_id, datos in conversaciones.items()
+        if otro_id in usuarios_por_id
+    ]
+
+    return jsonify(resultado), 200
 
 
 @messages_bp.route("/conversacion/<int:otro_usuario_id>", methods=["GET"])
