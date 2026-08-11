@@ -1,3 +1,6 @@
+import shutil
+import tempfile
+
 import pytest
 
 from app import create_app, db as _db
@@ -10,16 +13,21 @@ class TestConfig:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     DOMINIO_INSTITUCIONAL = "usanjose.edu.co"
     JWT_ACCESS_TOKEN_EXPIRES_HORAS = 12
+    UPLOAD_FOLDER = None  # se asigna por test a una carpeta temporal
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024
 
 
 @pytest.fixture
 def app():
+    carpeta_uploads = tempfile.mkdtemp()
+    TestConfig.UPLOAD_FOLDER = carpeta_uploads
     application = create_app(TestConfig)
     with application.app_context():
         _db.create_all()
         yield application
         _db.session.remove()
         _db.drop_all()
+    shutil.rmtree(carpeta_uploads, ignore_errors=True)
 
 
 @pytest.fixture

@@ -17,3 +17,8 @@ class Config:
 
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "cambia-esta-clave-jwt")
     JWT_ACCESS_TOKEN_EXPIRES_HORAS = 12
+
+    UPLOAD_FOLDER = os.environ.get(
+        "UPLOAD_FOLDER", os.path.join(BASE_DIR, "instance", "uploads")
+    )
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB por archivo

@@ -25,6 +25,7 @@ class Publicacion(db.Model):
             "usuario_id": self.usuario_id,
             "autor": self.autor.nombre_completo,
             "rol_autor": self.autor.rol,
+            "foto_autor": self.autor.foto_url,
             "contenido": self.contenido,
             "imagen_url": self.imagen_url,
             "fijado": self.fijado,
