@@ -5,6 +5,7 @@ from app.models.publicacion import Publicacion
 from app.models.comentario import Comentario
 from app.models.like import Like
 from app.models.usuario import RolUsuario
+from app.models.bloqueo import existe_bloqueo
 
 posts_bp = Blueprint("posts", __name__)
 
@@ -59,6 +60,31 @@ def crear_publicacion():
     return jsonify(publicacion.to_dict()), 201
 
 
+@posts_bp.route("/<int:publicacion_id>", methods=["PUT"])
+@jwt_required()
+def editar_publicacion(publicacion_id):
+    usuario_id = int(get_jwt_identity())
+    publicacion = Publicacion.query.get_or_404(publicacion_id)
+
+    if publicacion.usuario_id != usuario_id:
+        return jsonify({"error": "No tienes permiso para editar esta publicación"}), 403
+
+    data = request.get_json() or {}
+    contenido = data.get("contenido", "").strip()
+    if not contenido:
+        return jsonify({"error": "El contenido no puede estar vacío"}), 400
+    if len(contenido) > PUBLICACION_MAX:
+        return jsonify({"error": f"El contenido no puede superar los {PUBLICACION_MAX} caracteres"}), 400
+
+    publicacion.contenido = contenido
+    if "imagen_url" in data:
+        publicacion.imagen_url = data["imagen_url"]
+    publicacion.editado = True
+
+    db.session.commit()
+    return jsonify(publicacion.to_dict()), 200
+
+
 @posts_bp.route("/<int:publicacion_id>", methods=["DELETE"])
 @jwt_required()
 def eliminar_publicacion(publicacion_id):
@@ -87,7 +113,10 @@ def comentar(publicacion_id):
     if len(contenido) > COMENTARIO_MAX:
         return jsonify({"error": f"El comentario no puede superar los {COMENTARIO_MAX} caracteres"}), 400
 
-    Publicacion.query.get_or_404(publicacion_id)
+    publicacion = Publicacion.query.get_or_404(publicacion_id)
+
+    if existe_bloqueo(usuario_id, publicacion.usuario_id):
+        return jsonify({"error": "No puedes comentar en esta publicación"}), 403
 
     comentario = Comentario(
         publicacion_id=publicacion_id, usuario_id=usuario_id, contenido=contenido

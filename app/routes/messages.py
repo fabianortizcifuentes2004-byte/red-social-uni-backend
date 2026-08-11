@@ -4,6 +4,7 @@ from sqlalchemy import or_, and_
 from app import db, limiter
 from app.models.mensaje import Mensaje
 from app.models.usuario import Usuario
+from app.models.bloqueo import existe_bloqueo
 
 messages_bp = Blueprint("messages", __name__)
 
@@ -24,6 +25,8 @@ def enviar_mensaje():
         return jsonify({"error": "destinatario_id y contenido son obligatorios"}), 400
     if len(contenido) > MENSAJE_MAX:
         return jsonify({"error": f"El mensaje no puede superar los {MENSAJE_MAX} caracteres"}), 400
+    if existe_bloqueo(remitente_id, destinatario_id):
+        return jsonify({"error": "No puedes enviar mensajes a este usuario"}), 403
 
     mensaje = Mensaje(
         remitente_id=remitente_id, destinatario_id=destinatario_id, contenido=contenido

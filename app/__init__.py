@@ -32,6 +32,7 @@ def create_app(config_class="config.Config"):
     from app.routes.users import users_bp
     from app.routes.uploads import uploads_bp
     from app.routes.admin import admin_bp
+    from app.routes.reportes import reportes_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(posts_bp, url_prefix="/api/posts")
@@ -39,9 +40,19 @@ def create_app(config_class="config.Config"):
     app.register_blueprint(users_bp, url_prefix="/api/users")
     app.register_blueprint(uploads_bp, url_prefix="/api/uploads")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
+    app.register_blueprint(reportes_bp, url_prefix="/api/reportes")
 
     # Importa los modelos para que Flask-Migrate los detecte
-    from app.models import usuario, publicacion, comentario, like, mensaje, seguidor  # noqa
+    from app.models import (  # noqa
+        usuario,
+        publicacion,
+        comentario,
+        like,
+        mensaje,
+        seguidor,
+        reporte,
+        bloqueo,
+    )
 
     @app.route("/api/health")
     def health():

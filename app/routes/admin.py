@@ -5,6 +5,7 @@ from app import db
 from app.models.usuario import Usuario, RolUsuario
 from app.models.publicacion import Publicacion
 from app.models.comentario import Comentario
+from app.models.reporte import Reporte
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -57,6 +58,10 @@ def actualizar_usuario(usuario_id):
 
     if "activo" in data:
         usuario.activo = bool(data["activo"])
+        if usuario.activo:
+            # Si un admin reactiva manualmente una cuenta, ya no cuenta como
+            # "el usuario se eliminó a sí mismo".
+            usuario.eliminado_por_usuario = False
 
     db.session.commit()
     return jsonify(usuario.to_dict()), 200
@@ -84,3 +89,34 @@ def estadisticas():
             ).count(),
         }
     ), 200
+
+
+@admin_bp.route("/reportes", methods=["GET"])
+@jwt_required()
+def listar_reportes():
+    if not _usuario_actual_es_admin():
+        return jsonify({"error": "No tienes permiso para acceder a este recurso"}), 403
+
+    query = Reporte.query
+    resuelto = request.args.get("resuelto")
+    if resuelto is not None:
+        query = query.filter_by(resuelto=resuelto.lower() == "true")
+
+    reportes = query.order_by(Reporte.fecha_creacion.desc()).all()
+    return jsonify([r.to_dict() for r in reportes]), 200
+
+
+@admin_bp.route("/reportes/<int:reporte_id>", methods=["PUT"])
+@jwt_required()
+def actualizar_reporte(reporte_id):
+    if not _usuario_actual_es_admin():
+        return jsonify({"error": "No tienes permiso para acceder a este recurso"}), 403
+
+    reporte = Reporte.query.get_or_404(reporte_id)
+    data = request.get_json() or {}
+
+    if "resuelto" in data:
+        reporte.resuelto = bool(data["resuelto"])
+
+    db.session.commit()
+    return jsonify(reporte.to_dict()), 200

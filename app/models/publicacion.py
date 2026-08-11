@@ -10,6 +10,7 @@ class Publicacion(db.Model):
     contenido = db.Column(db.Text, nullable=False)
     imagen_url = db.Column(db.String(255), nullable=True)
     fijado = db.Column(db.Boolean, default=False)  # avisos importantes de docentes
+    editado = db.Column(db.Boolean, default=False)
     fecha_creacion = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     comentarios = db.relationship(
@@ -29,6 +30,7 @@ class Publicacion(db.Model):
             "contenido": self.contenido,
             "imagen_url": self.imagen_url,
             "fijado": self.fijado,
+            "editado": self.editado,
             "fecha_creacion": self.fecha_creacion.isoformat(),
             "total_likes": self.likes.count(),
             "total_comentarios": self.comentarios.count(),

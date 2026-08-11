@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models.usuario import Usuario
 from app.models.seguidor import Seguidor
+from app.models.bloqueo import Bloqueo
 
 users_bp = Blueprint("users", __name__)
 
@@ -42,6 +43,34 @@ def editar_perfil():
     return jsonify(usuario.to_dict()), 200
 
 
+@users_bp.route("/me", methods=["DELETE"])
+@jwt_required()
+def eliminar_mi_cuenta():
+    usuario_id = int(get_jwt_identity())
+    usuario = Usuario.query.get_or_404(usuario_id)
+    data = request.get_json() or {}
+
+    if not usuario.check_password(data.get("password", "")):
+        return jsonify({"error": "Contraseña incorrecta"}), 401
+
+    usuario.activo = False
+    usuario.eliminado_por_usuario = True
+    db.session.commit()
+    return jsonify({"mensaje": "Cuenta eliminada"}), 200
+
+
+@users_bp.route("/me/bloqueados", methods=["GET"])
+@jwt_required()
+def listar_bloqueados():
+    usuario_id = int(get_jwt_identity())
+    bloqueados = (
+        Usuario.query.join(Bloqueo, Bloqueo.bloqueado_id == Usuario.id)
+        .filter(Bloqueo.bloqueador_id == usuario_id)
+        .all()
+    )
+    return jsonify([u.to_dict() for u in bloqueados]), 200
+
+
 @users_bp.route("/<int:usuario_id>", methods=["GET"])
 @jwt_required()
 def ver_perfil(usuario_id):
@@ -56,6 +85,11 @@ def ver_perfil(usuario_id):
         and Seguidor.query.filter_by(seguidor_id=solicitante_id, seguido_id=usuario_id).first()
         is not None
     )
+    datos["lo_bloqueaste"] = (
+        usuario_id != solicitante_id
+        and Bloqueo.query.filter_by(bloqueador_id=solicitante_id, bloqueado_id=usuario_id).first()
+        is not None
+    )
     return jsonify(datos), 200
 
 
@@ -67,6 +101,8 @@ def buscar_usuarios():
     facultad = request.args.get("facultad", "").strip()
     carrera = request.args.get("carrera", "").strip()
 
+    solicitante_id = int(get_jwt_identity())
+
     query = Usuario.query.filter_by(activo=True)
     if q:
         query = query.filter(Usuario.nombre_completo.ilike(f"%{q}%"))
@@ -75,8 +111,48 @@ def buscar_usuarios():
     if carrera:
         query = query.filter(Usuario.carrera.ilike(f"%{carrera}%"))
 
+    ids_bloqueados = {
+        b.bloqueado_id for b in Bloqueo.query.filter_by(bloqueador_id=solicitante_id).all()
+    } | {
+        b.bloqueador_id for b in Bloqueo.query.filter_by(bloqueado_id=solicitante_id).all()
+    }
+    if ids_bloqueados:
+        query = query.filter(~Usuario.id.in_(ids_bloqueados))
+
     usuarios = query.limit(30).all()
     return jsonify([u.to_dict() for u in usuarios]), 200
+
+
+@users_bp.route("/<int:usuario_id>/bloquear", methods=["POST"])
+@jwt_required()
+def bloquear_usuario(usuario_id):
+    bloqueador_id = int(get_jwt_identity())
+    Usuario.query.get_or_404(usuario_id)
+
+    if bloqueador_id == usuario_id:
+        return jsonify({"error": "No puedes bloquearte a ti mismo"}), 400
+
+    existente = Bloqueo.query.filter_by(bloqueador_id=bloqueador_id, bloqueado_id=usuario_id).first()
+    if existente:
+        return jsonify({"error": "Ya bloqueaste a este usuario"}), 409
+
+    bloqueo = Bloqueo(bloqueador_id=bloqueador_id, bloqueado_id=usuario_id)
+    db.session.add(bloqueo)
+    db.session.commit()
+    return jsonify({"mensaje": "Usuario bloqueado"}), 201
+
+
+@users_bp.route("/<int:usuario_id>/bloquear", methods=["DELETE"])
+@jwt_required()
+def desbloquear_usuario(usuario_id):
+    bloqueador_id = int(get_jwt_identity())
+
+    existente = Bloqueo.query.filter_by(bloqueador_id=bloqueador_id, bloqueado_id=usuario_id).first()
+    if existente:
+        db.session.delete(existente)
+        db.session.commit()
+
+    return jsonify({"mensaje": "Usuario desbloqueado"}), 200
 
 
 @users_bp.route("/<int:usuario_id>/seguir", methods=["POST"])

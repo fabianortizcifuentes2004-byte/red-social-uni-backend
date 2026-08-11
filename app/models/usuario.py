@@ -23,6 +23,10 @@ class Usuario(db.Model):
     biografia = db.Column(db.String(280), nullable=True)
     fecha_registro = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     activo = db.Column(db.Boolean, default=True)
+    # Distingue una cuenta desactivada por un admin (baneo) de una que el
+    # propio usuario cerró — ambas bloquean el login igual, pero el panel de
+    # admin necesita poder diferenciarlas.
+    eliminado_por_usuario = db.Column(db.Boolean, default=False)
 
     publicaciones = db.relationship("Publicacion", backref="autor", lazy="dynamic")
     comentarios = db.relationship("Comentario", backref="autor", lazy="dynamic")
@@ -43,4 +47,6 @@ class Usuario(db.Model):
             "carrera": self.carrera,
             "foto_url": self.foto_url,
             "biografia": self.biografia,
+            "activo": self.activo,
+            "eliminado_por_usuario": self.eliminado_por_usuario,
         }
