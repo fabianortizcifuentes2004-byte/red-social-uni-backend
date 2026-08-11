@@ -5,6 +5,7 @@ from app import db, limiter
 from app.models.mensaje import Mensaje
 from app.models.usuario import Usuario
 from app.models.bloqueo import existe_bloqueo
+from app.utils.notificaciones import enviar_notificacion
 
 messages_bp = Blueprint("messages", __name__)
 
@@ -33,6 +34,14 @@ def enviar_mensaje():
     )
     db.session.add(mensaje)
     db.session.commit()
+
+    remitente = Usuario.query.get(remitente_id)
+    enviar_notificacion(
+        destinatario_id,
+        remitente.nombre_completo,
+        contenido,
+        datos={"tipo": "mensaje", "usuario_id": remitente_id},
+    )
 
     return jsonify(mensaje.to_dict()), 201
 

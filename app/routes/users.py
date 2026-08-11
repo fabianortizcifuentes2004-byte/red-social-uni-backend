@@ -4,6 +4,7 @@ from app import db
 from app.models.usuario import Usuario
 from app.models.seguidor import Seguidor
 from app.models.bloqueo import Bloqueo
+from app.utils.notificaciones import enviar_notificacion
 
 users_bp = Blueprint("users", __name__)
 
@@ -41,6 +42,18 @@ def editar_perfil():
 
     db.session.commit()
     return jsonify(usuario.to_dict()), 200
+
+
+@users_bp.route("/me/push-token", methods=["PUT"])
+@jwt_required()
+def actualizar_push_token():
+    usuario_id = int(get_jwt_identity())
+    usuario = Usuario.query.get_or_404(usuario_id)
+    data = request.get_json() or {}
+
+    usuario.push_token = data.get("push_token") or None
+    db.session.commit()
+    return jsonify({"mensaje": "Token actualizado"}), 200
 
 
 @users_bp.route("/me", methods=["DELETE"])
@@ -171,6 +184,15 @@ def seguir_usuario(usuario_id):
     seguimiento = Seguidor(seguidor_id=seguidor_id, seguido_id=usuario_id)
     db.session.add(seguimiento)
     db.session.commit()
+
+    seguidor = Usuario.query.get(seguidor_id)
+    enviar_notificacion(
+        usuario_id,
+        "Nuevo seguidor",
+        f"{seguidor.nombre_completo} empezó a seguirte",
+        datos={"tipo": "seguidor", "usuario_id": seguidor_id},
+    )
+
     return jsonify({"mensaje": "Ahora sigues a este usuario"}), 201
 
 

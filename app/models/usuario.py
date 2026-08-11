@@ -26,7 +26,10 @@ class Usuario(db.Model):
     # Distingue una cuenta desactivada por un admin (baneo) de una que el
     # propio usuario cerró — ambas bloquean el login igual, pero el panel de
     # admin necesita poder diferenciarlas.
-    eliminado_por_usuario = db.Column(db.Boolean, default=False)
+    eliminado_por_usuario = db.Column(db.Boolean, nullable=False, default=False)
+    # Un solo token por usuario (el último dispositivo en loguearse gana) —
+    # suficiente para la escala de este proyecto, no soporta multi-dispositivo.
+    push_token = db.Column(db.String(255), nullable=True)
 
     publicaciones = db.relationship("Publicacion", backref="autor", lazy="dynamic")
     comentarios = db.relationship("Comentario", backref="autor", lazy="dynamic")

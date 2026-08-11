@@ -15,7 +15,7 @@ class Reporte(db.Model):
     tipo_objetivo = db.Column(db.String(20), nullable=False)
     objetivo_id = db.Column(db.Integer, nullable=False)
     motivo = db.Column(db.String(500), nullable=True)
-    resuelto = db.Column(db.Boolean, default=False)
+    resuelto = db.Column(db.Boolean, nullable=False, default=False)
     fecha_creacion = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     reportante = db.relationship("Usuario")

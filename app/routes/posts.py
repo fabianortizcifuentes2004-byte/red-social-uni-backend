@@ -4,8 +4,9 @@ from app import db, limiter
 from app.models.publicacion import Publicacion
 from app.models.comentario import Comentario
 from app.models.like import Like
-from app.models.usuario import RolUsuario
+from app.models.usuario import RolUsuario, Usuario
 from app.models.bloqueo import existe_bloqueo
+from app.utils.notificaciones import enviar_notificacion
 
 posts_bp = Blueprint("posts", __name__)
 
@@ -124,6 +125,15 @@ def comentar(publicacion_id):
     db.session.add(comentario)
     db.session.commit()
 
+    if publicacion.usuario_id != usuario_id:
+        comentarista = Usuario.query.get(usuario_id)
+        enviar_notificacion(
+            publicacion.usuario_id,
+            "Nuevo comentario",
+            f"{comentarista.nombre_completo} comentó tu publicación",
+            datos={"tipo": "comentario", "publicacion_id": publicacion_id},
+        )
+
     return jsonify(comentario.to_dict()), 201
 
 
@@ -160,7 +170,7 @@ def eliminar_comentario(publicacion_id, comentario_id):
 @jwt_required()
 def dar_like(publicacion_id):
     usuario_id = int(get_jwt_identity())
-    Publicacion.query.get_or_404(publicacion_id)
+    publicacion = Publicacion.query.get_or_404(publicacion_id)
 
     existente = Like.query.filter_by(
         publicacion_id=publicacion_id, usuario_id=usuario_id
@@ -174,4 +184,14 @@ def dar_like(publicacion_id):
     like = Like(publicacion_id=publicacion_id, usuario_id=usuario_id)
     db.session.add(like)
     db.session.commit()
+
+    if publicacion.usuario_id != usuario_id:
+        quien_dio_like = Usuario.query.get(usuario_id)
+        enviar_notificacion(
+            publicacion.usuario_id,
+            "Nuevo like",
+            f"A {quien_dio_like.nombre_completo} le gustó tu publicación",
+            datos={"tipo": "like", "publicacion_id": publicacion_id},
+        )
+
     return jsonify({"mensaje": "Like agregado", "like": True}), 201
