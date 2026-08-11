@@ -44,3 +44,19 @@ def registrar_y_loguear(client, correo="ana@usanjose.edu.co", nombre="Ana Torres
     resp = client.post("/api/auth/login", json={"correo": correo, "password": "clave123"})
     token = resp.get_json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+def registrar_admin_y_loguear(client, correo="admin@usanjose.edu.co", nombre="Admin"):
+    """Registra un usuario, lo promueve a admin directamente en el modelo (la API
+    pública no lo permite) y vuelve a loguear para obtener un token con el claim
+    de rol ya actualizado."""
+    from app.models.usuario import Usuario, RolUsuario
+
+    registrar_y_loguear(client, correo=correo, nombre=nombre)
+    usuario = Usuario.query.filter_by(correo=correo).first()
+    usuario.rol = RolUsuario.ADMIN
+    _db.session.commit()
+
+    resp = client.post("/api/auth/login", json={"correo": correo, "password": "clave123"})
+    token = resp.get_json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}

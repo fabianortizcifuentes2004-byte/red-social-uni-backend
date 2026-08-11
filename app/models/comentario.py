@@ -15,6 +15,7 @@ class Comentario(db.Model):
         return {
             "id": self.id,
             "publicacion_id": self.publicacion_id,
+            "usuario_id": self.usuario_id,
             "autor": self.autor.nombre_completo,
             "contenido": self.contenido,
             "fecha_creacion": self.fecha_creacion.isoformat(),

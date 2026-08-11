@@ -55,3 +55,41 @@ def test_eliminar_publicacion_de_otro_usuario_falla(client):
 
     resp = client.delete(f"/api/posts/{post['id']}", headers=headers_luis)
     assert resp.status_code == 403
+
+
+def test_autor_puede_eliminar_su_propio_comentario(client):
+    headers = registrar_y_loguear(client)
+    post = client.post("/api/posts", json={"contenido": "Hola"}, headers=headers).get_json()
+    comentario = client.post(
+        f"/api/posts/{post['id']}/comentarios", json={"contenido": "Mi comentario"}, headers=headers
+    ).get_json()
+
+    resp = client.delete(f"/api/posts/{post['id']}/comentarios/{comentario['id']}", headers=headers)
+    assert resp.status_code == 200
+
+    comentarios = client.get(f"/api/posts/{post['id']}/comentarios", headers=headers).get_json()
+    assert comentarios == []
+
+
+def test_eliminar_comentario_de_otro_usuario_falla(client):
+    headers_ana = registrar_y_loguear(client, correo="ana@usanjose.edu.co", nombre="Ana")
+    headers_luis = registrar_y_loguear(client, correo="luis@usanjose.edu.co", nombre="Luis")
+
+    post = client.post("/api/posts", json={"contenido": "Hola"}, headers=headers_ana).get_json()
+    comentario = client.post(
+        f"/api/posts/{post['id']}/comentarios", json={"contenido": "Comentario de Ana"}, headers=headers_ana
+    ).get_json()
+
+    resp = client.delete(
+        f"/api/posts/{post['id']}/comentarios/{comentario['id']}", headers=headers_luis
+    )
+    assert resp.status_code == 403
+
+
+def test_comentario_incluye_usuario_id(client):
+    headers = registrar_y_loguear(client)
+    post = client.post("/api/posts", json={"contenido": "Hola"}, headers=headers).get_json()
+    comentario = client.post(
+        f"/api/posts/{post['id']}/comentarios", json={"contenido": "Hola"}, headers=headers
+    ).get_json()
+    assert "usuario_id" in comentario

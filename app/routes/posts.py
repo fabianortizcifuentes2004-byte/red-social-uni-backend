@@ -101,6 +101,23 @@ def listar_comentarios(publicacion_id):
     return jsonify([c.to_dict() for c in comentarios]), 200
 
 
+@posts_bp.route("/<int:publicacion_id>/comentarios/<int:comentario_id>", methods=["DELETE"])
+@jwt_required()
+def eliminar_comentario(publicacion_id, comentario_id):
+    usuario_id = int(get_jwt_identity())
+    claims = get_jwt()
+    comentario = Comentario.query.filter_by(
+        id=comentario_id, publicacion_id=publicacion_id
+    ).first_or_404()
+
+    if comentario.usuario_id != usuario_id and claims.get("rol") != RolUsuario.ADMIN:
+        return jsonify({"error": "No tienes permiso para eliminar este comentario"}), 403
+
+    db.session.delete(comentario)
+    db.session.commit()
+    return jsonify({"mensaje": "Comentario eliminado"}), 200
+
+
 @posts_bp.route("/<int:publicacion_id>/like", methods=["POST"])
 @jwt_required()
 def dar_like(publicacion_id):
